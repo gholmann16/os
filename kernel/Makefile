@@ -1,38 +1,16 @@
 CCFLAGS = -Iinclude -ggdb -c -ffreestanding
 
-kernel.bin: kernel.o entry.o io.o vga.o string.o idt.o idt_flush.o isr.o interrupts.o timer.o
-	ld.lld -o ../kernel.bin -Ttext 0xffff entry.o kernel.o io.o vga.o string.o idt.o idt_flush.o isr.o interrupts.o timer.o --oformat binary
-	rm *.o
+C_OBJS   = $(patsubst %.c,%.o,$(wildcard *.c))
+ASM_OBJS = $(patsubst %.asm,%.o,$(filter-out entry.asm,$(wildcard *.asm)))
 
-interrupts.o:
-	nasm interrupts.asm -f elf64 -o interrupts.o
+../kernel.bin: entry.o $(C_OBJS) $(ASM_OBJS)
+	ld.lld -o $@ -Ttext 0xffff $^ --oformat binary
 
-entry.o:
-	nasm entry.asm -f elf64 -o entry.o
+%.o: %.c
+	gcc $< $(CCFLAGS) -o $@
 
-idt_flush.o:
-	nasm idt_flush.asm -f elf64 -o idt_flush.o
+%.o: %.asm
+	nasm $< -f elf64 -o $@
 
-kernel.o:
-	gcc kernel.c ${CCFLAGS} -o kernel.o
-
-io.o:
-	gcc io.c ${CCFLAGS} -o io.o
-
-vga.o:
-	gcc vga.c ${CCFLAGS} -o vga.o
-
-string.o:
-	gcc string.c ${CCFLAGS} -o string.o
-
-idt.o:
-	gcc idt.c ${CCFLAGS} -o idt.o
-
-isr.o:
-	gcc isr.c ${CCFLAGS} -o isr.o
-
-timer.o:
-	gcc timer.c ${CCFLAGS} -o timer.o
-
-clean: 
-	rm *.o
+clean:
+	rm -f *.o ../kernel.bin
